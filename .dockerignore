@@ -1,0 +1,10 @@
+.git
+.env.local
+.env.local.php
+.env.*.local
+secrets/*.txt
+var/
+vendor/
+node_modules/
+public/assets/
+.phpunit.cache/
