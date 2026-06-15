@@ -1,25 +1,102 @@
-
 services:
-###> doctrine/doctrine-bundle ###
+  app:
+    build:
+      context: .
+      target: app
+    container_name: symfony_app
+    working_dir: /var/www/html
+    secrets:
+      - app_secret
+      - database_url
+    networks:
+      - symfony_network
+
+  webserver:
+    build:
+      context: .
+      target: webserver
+    container_name: symfony_webserver
+    ports:
+      - "8080:80"
+    volumes:
+      - nginx_logs:/var/log/nginx # Logs Nginx persistants
+    depends_on:
+      - app
+    networks:
+      - symfony_network
+
   database:
-    image: postgres:${POSTGRES_VERSION:-16}-alpine
+    image: mysql:8.0
+    container_name: symfony_db
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-app}
-      # You should definitely change the password in production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
-      POSTGRES_USER: ${POSTGRES_USER:-app}
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      MYSQL_DATABASE_FILE: /run/secrets/mysql_database
+      MYSQL_USER: symfony
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
     healthcheck:
-      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-app}", "-U", "${POSTGRES_USER:-app}"]
+      test: [ "CMD-SHELL", "MYSQL_PWD=\"$${MYSQL_PASSWORD:-$$(cat $${MYSQL_PASSWORD_FILE:-/run/secrets/mysql_password} 2>/dev/null)}\" mysql --protocol=TCP -h 127.0.0.1 -u\"$${MYSQL_USER}\" -e \"SELECT 1\" \"$${MYSQL_DATABASE:-$$(cat $${MYSQL_DATABASE_FILE:-/run/secrets/mysql_database} 2>/dev/null)}\"" ]
       timeout: 5s
       retries: 5
       start_period: 60s
+    ports:
+      - "3306:3306"
     volumes:
-      - database_data:/var/lib/postgresql/data:rw
-      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
-      # - ./docker/db/data:/var/lib/postgresql/data:rw
-###< doctrine/doctrine-bundle ###
+      - db_data:/var/lib/mysql # Ã¢â€ Â Stocke les bases de donnÃƒÂ©es et relations internes
+    networks:
+      - symfony_network
+    secrets:
+      - mysql_root_password
+      - mysql_database
+      - mysql_password
+
+  adminer:
+    image: adminer
+    container_name: symfony_adminer
+    restart: always
+    ports:
+      - "8081:8080" # Adminer sera accessible sur http://localhost:8081
+    depends_on:
+      - database
+    networks:
+      - symfony_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: symfony_phpmyadmin
+    restart: always
+    ports:
+      - "8082:80" # phpMyAdmin sera accessible sur http://localhost:8082
+    environment:
+      PMA_HOST: symfony_db
+      PMA_PMADB: phpmyadmin # Nom de la base de configuration
+      PMA_CONTROLUSER: symfony # Utilisateur qui gÃƒÂ¨re les tables internes
+      PMA_CONTROLPASS_FILE: /run/secrets/mysql_password # Mot de passe du user de controle
+    depends_on:
+      - database
+    networks:
+      - symfony_network
+    secrets:
+      - mysql_password
+    volumes:
+      - phpmyadmin_data:/var/lib/phpmyadmin # Volume pour les donnÃƒÂ©es internes
+
+secrets:
+  app_secret:
+    file: ./secrets/app_secret.txt
+  database_url:
+    file: ./secrets/database_url.txt
+  mysql_root_password:
+    file: ./secrets/mysql_root_password.txt
+  mysql_database:
+    file: ./secrets/mysql_database.txt
+  mysql_password:
+    file: ./secrets/mysql_password.txt
+
+networks:
+  symfony_network:
+    driver: bridge
 
 volumes:
-###> doctrine/doctrine-bundle ###
-  database_data:
-###< doctrine/doctrine-bundle ###
+  db_data: # Pour MySQL
+  phpmyadmin_data: # Pour phpMyAdmin
+  nginx_logs: # Logs Nginx persistants

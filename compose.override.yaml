@@ -1,10 +1,25 @@
 
 services:
-###> doctrine/doctrine-bundle ###
+  app:
+    environment:
+      APP_SECRET_FILE: ""
+      DATABASE_URL_FILE: ""
+    volumes:
+      - .:/var/www/html # Code source en developpement
+
   database:
-    ports:
-      - "5432"
-###< doctrine/doctrine-bundle ###
+    env_file:
+      - .env.local
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: ""
+      MYSQL_DATABASE_FILE: ""
+      MYSQL_PASSWORD_FILE: ""
+
+  webserver:
+    volumes:
+      - .:/var/www/html # Code source en developpement
+      - ./nginx:/etc/nginx/conf.d
+      - nginx_logs:/var/log/nginx
 
 ###> symfony/mailer ###
   mailer:
