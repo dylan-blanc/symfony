@@ -23,9 +23,9 @@ verifie les mise a jour, install le packet curl + unzip + git afin de telecharge
 
 
 
-# pour générer une clé en hexadecimal 64octet
+# pour générer une clé en hexadécimal
 ```
 php -r "echo bin2hex(random_bytes(64)).PHP_EOL;"
 ```
-![GenereUneCleBase64.png](screenshot/GenereUneCleBase64.png)
-####  l'équivalent existe avec OpenSSL : ``` openssl rand -hex 64 ```
+![GenereUneCleHexadecimal.png](screenshot/GenereUneCleHexadecimal.png)
+####  l'équivalent existe avec OpenSSL : ``` openssl rand -hex 32 ```
